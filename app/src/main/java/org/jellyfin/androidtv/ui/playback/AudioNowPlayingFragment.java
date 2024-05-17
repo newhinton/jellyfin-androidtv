@@ -48,6 +48,8 @@ import kotlin.Lazy;
 import timber.log.Timber;
 
 public class AudioNowPlayingFragment extends Fragment {
+    private ImageButton homeButton;
+
     private TextView mGenreRow;
     private ImageButton mPlayPauseButton;
     private ImageButton mNextButton;
@@ -82,6 +84,7 @@ public class AudioNowPlayingFragment extends Fragment {
     private Lazy<BackgroundService> backgroundService = inject(BackgroundService.class);
     private Lazy<MediaManager> mediaManager = inject(MediaManager.class);
     private Lazy<NavigationRepository> navigationRepository = inject(NavigationRepository.class);
+    private final Lazy<KeyProcessor> keyProcessor = inject(KeyProcessor.class);
 
     private PopupMenu popupMenu;
 
@@ -89,6 +92,9 @@ public class AudioNowPlayingFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         FragmentAudioNowPlayingBinding binding = FragmentAudioNowPlayingBinding.inflate(getLayoutInflater(), container, false);
+
+        homeButton = binding.clock.getHomeButton();
+        homeButton.setOnFocusChangeListener(mainAreaFocusListener);
 
         mPoster = binding.poster;
         mPoster.setClipToOutline(true);
@@ -273,8 +279,9 @@ public class AudioNowPlayingFragment extends Fragment {
     private View.OnFocusChangeListener mainAreaFocusListener = new View.OnFocusChangeListener() {
         @Override
         public void onFocusChange(View v, boolean hasFocus) {
-            if (!hasFocus) {
-                // when the playback control buttons lose focus, the only other focusable object is the queue row.
+            if (!hasFocus && v != homeButton) {
+                // when the playback control buttons lose focus, and the home button is not focused
+                // the only other focusable object is the queue row.
                 // Scroll to the bottom of the scrollView
                 mScrollView.smoothScrollTo(0, mScrollView.getHeight() - 1);
                 queueRowHasFocus = true;
@@ -370,7 +377,7 @@ public class AudioNowPlayingFragment extends Fragment {
                                   RowPresenter.ViewHolder rowViewHolder, Row row) {
 
             if (!(item instanceof BaseRowItem)) return;
-            popupMenu = KeyProcessor.createItemMenu((BaseRowItem) item, ((BaseRowItem) item).getBaseItem().getUserData(), requireActivity());
+            popupMenu = keyProcessor.getValue().createItemMenu((BaseRowItem) item, ((BaseRowItem) item).getBaseItem().getUserData(), requireActivity());
         }
     }
 
@@ -391,5 +398,12 @@ public class AudioNowPlayingFragment extends Fragment {
             popupMenu.dismiss();
             popupMenu = null;
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        homeButton.setOnFocusChangeListener(null);
     }
 }

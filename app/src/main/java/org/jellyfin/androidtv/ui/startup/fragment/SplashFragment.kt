@@ -6,18 +6,19 @@ import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import androidx.fragment.compose.content
 import org.jellyfin.androidtv.R
 
 @Composable
@@ -33,7 +34,9 @@ fun SplashScreen() {
 			Image(
 				painter = painterResource(R.drawable.app_logo),
 				contentDescription = stringResource(R.string.app_name),
-				modifier = Modifier.width(400.dp)
+				modifier = Modifier
+					.width(400.dp)
+					.fillMaxHeight()
 			)
 		}
 	}
@@ -44,9 +47,7 @@ class SplashFragment : Fragment() {
 		inflater: LayoutInflater,
 		container: ViewGroup?,
 		savedInstanceState: Bundle?
-	) = ComposeView(requireContext()).apply {
-		setContent {
-			SplashScreen()
-		}
+	) = content {
+		SplashScreen()
 	}
 }

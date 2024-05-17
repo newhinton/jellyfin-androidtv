@@ -17,6 +17,7 @@ import org.jellyfin.androidtv.ui.browsing.SuggestedMoviesFragment
 import org.jellyfin.androidtv.ui.home.HomeFragment
 import org.jellyfin.androidtv.ui.itemdetail.FullDetailsFragment
 import org.jellyfin.androidtv.ui.itemdetail.ItemListFragment
+import org.jellyfin.androidtv.ui.itemdetail.MusicFavoritesListFragment
 import org.jellyfin.androidtv.ui.livetv.GuideFiltersScreen
 import org.jellyfin.androidtv.ui.livetv.GuideOptionsScreen
 import org.jellyfin.androidtv.ui.livetv.LiveTvGuideFragment
@@ -25,11 +26,13 @@ import org.jellyfin.androidtv.ui.playback.AudioNowPlayingFragment
 import org.jellyfin.androidtv.ui.playback.CustomPlaybackOverlayFragment
 import org.jellyfin.androidtv.ui.playback.ExternalPlayerActivity
 import org.jellyfin.androidtv.ui.playback.nextup.NextUpFragment
+import org.jellyfin.androidtv.ui.playback.rewrite.PlaybackRewriteFragment
 import org.jellyfin.androidtv.ui.preference.PreferencesActivity
 import org.jellyfin.androidtv.ui.preference.dsl.OptionsFragment
 import org.jellyfin.androidtv.ui.preference.screen.UserPreferencesScreen
 import org.jellyfin.androidtv.ui.search.SearchFragment
 import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SeriesTimerInfoDto
 import org.jellyfin.sdk.model.api.SortOrder
 import java.util.UUID
@@ -46,7 +49,9 @@ object Destinations {
 
 	// General
 	val home = fragmentDestination<HomeFragment>()
-	val search = fragmentDestination<SearchFragment>()
+	fun search(query: String? = null) = fragmentDestination<SearchFragment>(
+		SearchFragment.EXTRA_QUERY to query,
+	)
 	val userPreferences = preferenceDestination<UserPreferencesScreen>()
 
 	// Browsing
@@ -127,8 +132,7 @@ object Destinations {
 		"ItemId" to item.toString(),
 	)
 
-	fun itemList(item: UUID, parent: UUID) = fragmentDestination<ItemListFragment>(
-		"ItemId" to item.toString(),
+	fun musicFavorites(parent: UUID) = fragmentDestination<MusicFavoritesListFragment>(
 		"ParentId" to parent.toString(),
 	)
 
@@ -136,17 +140,18 @@ object Destinations {
 	val liveTvGuide = fragmentDestination<LiveTvGuideFragment>()
 	val liveTvSchedule = fragmentDestination<BrowseScheduleFragment>()
 	val liveTvRecordings = fragmentDestination<BrowseRecordingsFragment>()
+	val liveTvSeriesRecordings = fragmentDestination<BrowseViewFragment>(Extras.IsLiveTvSeriesRecordings to true)
 	val liveTvGuideFilterPreferences = preferenceDestination<GuideFiltersScreen>()
 	val liveTvGuideOptionPreferences = preferenceDestination<GuideOptionsScreen>()
 
 	// Playback
 	val nowPlaying = fragmentDestination<AudioNowPlayingFragment>()
 
-	fun pictureViewer(item: UUID, autoPlay: Boolean, albumSortBy: String?, albumSortOrder: SortOrder?) =
+	fun pictureViewer(item: UUID, autoPlay: Boolean, albumSortBy: ItemSortBy?, albumSortOrder: SortOrder?) =
 		fragmentDestination<PictureViewerFragment>(
 			PictureViewerFragment.ARGUMENT_ITEM_ID to item.toString(),
-			PictureViewerFragment.ARGUMENT_ALBUM_SORT_BY to albumSortBy,
-			PictureViewerFragment.ARGUMENT_ALBUM_SORT_ORDER to albumSortOrder?.let { Json.Default.encodeToString(it) },
+			PictureViewerFragment.ARGUMENT_ALBUM_SORT_BY to albumSortBy?.serialName,
+			PictureViewerFragment.ARGUMENT_ALBUM_SORT_ORDER to albumSortOrder?.serialName,
 			PictureViewerFragment.ARGUMENT_AUTO_PLAY to autoPlay,
 		)
 
@@ -156,6 +161,10 @@ object Destinations {
 
 	fun videoPlayer(position: Int?) = fragmentDestination<CustomPlaybackOverlayFragment>(
 		"Position" to (position ?: 0)
+	)
+
+	fun playbackRewritePlayer(position: Int?) = fragmentDestination<PlaybackRewriteFragment>(
+		PlaybackRewriteFragment.EXTRA_POSITION to position
 	)
 
 	fun nextUp(item: UUID) = fragmentDestination<NextUpFragment>(

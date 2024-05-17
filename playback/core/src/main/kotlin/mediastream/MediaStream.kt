@@ -1,6 +1,6 @@
 package org.jellyfin.playback.core.mediastream
 
-import org.jellyfin.playback.core.queue.item.QueueEntry
+import org.jellyfin.playback.core.queue.QueueEntry
 
 interface MediaStream {
 	val identifier: String
@@ -52,4 +52,8 @@ data class MediaStreamAudioTrack(
 	val sampleRate: Int,
 ) : MediaStreamTrack
 
-// TODO: Add Video/Subtitle tracks
+data class MediaStreamVideoTrack(
+	override val codec: String,
+) : MediaStreamTrack
+
+// TODO: Add subtitle track

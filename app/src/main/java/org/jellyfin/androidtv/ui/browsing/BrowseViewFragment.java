@@ -10,6 +10,7 @@ import androidx.leanback.widget.Row;
 import org.jellyfin.androidtv.R;
 import org.jellyfin.androidtv.auth.repository.UserRepository;
 import org.jellyfin.androidtv.constant.ChangeTriggerType;
+import org.jellyfin.androidtv.constant.Extras;
 import org.jellyfin.androidtv.constant.LiveTvOption;
 import org.jellyfin.androidtv.constant.QueryType;
 import org.jellyfin.androidtv.data.querying.StdItemQuery;
@@ -39,10 +40,12 @@ import org.jellyfin.apiclient.model.querying.ItemsResult;
 import org.jellyfin.apiclient.model.querying.LatestItemsQuery;
 import org.jellyfin.apiclient.model.querying.NextUpQuery;
 import org.jellyfin.apiclient.model.results.TimerInfoDtoResult;
-import org.jellyfin.sdk.model.constant.CollectionType;
-import org.jellyfin.sdk.model.constant.ItemSortBy;
+import org.jellyfin.sdk.model.api.BaseItemKind;
+import org.jellyfin.sdk.model.api.CollectionType;
+import org.jellyfin.sdk.model.api.ItemSortBy;
 import org.koin.java.KoinJavaComponent;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,10 +60,10 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
 
     @Override
     protected void setupQueries(final RowLoader rowLoader) {
-        String type = mFolder.getCollectionType() != null ? mFolder.getCollectionType().toLowerCase() : "";
+        CollectionType type = mFolder != null && mFolder.getCollectionType() != null ? mFolder.getCollectionType() : CollectionType.UNKNOWN;
         switch (type) {
-            case CollectionType.Movies:
-                itemTypeString = "Movie";
+            case MOVIES:
+                itemType = BaseItemKind.MOVIE;
 
                 //Resume
                 StdItemQuery resumeMovies = new StdItemQuery(new ItemFields[]{
@@ -80,7 +83,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 resumeMovies.setCollapseBoxSetItems(false);
                 resumeMovies.setEnableTotalRecordCount(false);
                 resumeMovies.setFilters(new ItemFilter[]{ItemFilter.IsResumable});
-                resumeMovies.setSortBy(new String[]{ItemSortBy.DatePlayed});
+                resumeMovies.setSortBy(new String[]{ItemSortBy.DATE_PLAYED.getSerialName()});
                 resumeMovies.setSortOrder(SortOrder.Descending);
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_continue_watching), resumeMovies, 0, new ChangeTriggerType[]{ChangeTriggerType.MoviePlayback}));
 
@@ -113,7 +116,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 favorites.setParentId(mFolder.getId().toString());
                 favorites.setImageTypeLimit(1);
                 favorites.setFilters(new ItemFilter[]{ItemFilter.IsFavorite});
-                favorites.setSortBy(new String[]{ItemSortBy.SortName});
+                favorites.setSortBy(new String[]{ItemSortBy.SORT_NAME.getSerialName()});
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_favorites), favorites, 60, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated, ChangeTriggerType.FavoriteUpdate}));
 
                 //Collections
@@ -125,13 +128,13 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 collections.setRecursive(true);
                 collections.setImageTypeLimit(1);
                 //collections.setParentId(mFolder.getId());
-                collections.setSortBy(new String[]{ItemSortBy.SortName});
+                collections.setSortBy(new String[]{ItemSortBy.SORT_NAME.getSerialName()});
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_collections), collections, 60, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated}));
 
                 rowLoader.loadRows(mRows);
                 break;
-            case CollectionType.TvShows:
-                itemTypeString = "Series";
+            case TVSHOWS:
+                itemType = BaseItemKind.SERIES;
 
                 //Resume
                 StdItemQuery resumeEpisodes = new StdItemQuery(new ItemFields[]{
@@ -147,7 +150,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 resumeEpisodes.setRecursive(true);
                 resumeEpisodes.setImageTypeLimit(1);
                 resumeEpisodes.setFilters(new ItemFilter[]{ItemFilter.IsResumable});
-                resumeEpisodes.setSortBy(new String[]{ItemSortBy.DatePlayed});
+                resumeEpisodes.setSortBy(new String[]{ItemSortBy.DATE_PLAYED.getSerialName()});
                 resumeEpisodes.setSortOrder(SortOrder.Descending);
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_continue_watching), resumeEpisodes, 0, new ChangeTriggerType[]{ChangeTriggerType.TvPlayback}));
 
@@ -182,7 +185,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                     newQuery.setIsMissing(false);
                     newQuery.setImageTypeLimit(1);
                     newQuery.setFilters(new ItemFilter[]{ItemFilter.IsUnplayed});
-                    newQuery.setSortBy(new String[]{ItemSortBy.DateCreated});
+                    newQuery.setSortBy(new String[]{ItemSortBy.DATE_CREATED.getSerialName()});
                     newQuery.setSortOrder(SortOrder.Descending);
                     newQuery.setEnableTotalRecordCount(false);
                     newQuery.setLimit(300);
@@ -212,12 +215,12 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 tvFavorites.setParentId(mFolder.getId().toString());
                 tvFavorites.setImageTypeLimit(1);
                 tvFavorites.setFilters(new ItemFilter[]{ItemFilter.IsFavorite});
-                tvFavorites.setSortBy(new String[]{ItemSortBy.SortName});
+                tvFavorites.setSortBy(new String[]{ItemSortBy.SORT_NAME.getSerialName()});
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_favorites), tvFavorites, 60, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated, ChangeTriggerType.FavoriteUpdate}));
 
                 rowLoader.loadRows(mRows);
                 break;
-            case CollectionType.Music:
+            case MUSIC:
                 //Latest
                 LatestItemsQuery latestAlbums = new LatestItemsQuery();
                 latestAlbums.setFields(new ItemFields[]{
@@ -239,7 +242,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 lastPlayed.setParentId(mFolder.getId().toString());
                 lastPlayed.setImageTypeLimit(1);
                 lastPlayed.setFilters(new ItemFilter[]{ItemFilter.IsPlayed});
-                lastPlayed.setSortBy(new String[]{ItemSortBy.DatePlayed});
+                lastPlayed.setSortBy(new String[]{ItemSortBy.DATE_PLAYED.getSerialName()});
                 lastPlayed.setSortOrder(SortOrder.Descending);
                 lastPlayed.setEnableTotalRecordCount(false);
                 lastPlayed.setLimit(50);
@@ -252,7 +255,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 favAlbums.setParentId(mFolder.getId().toString());
                 favAlbums.setImageTypeLimit(1);
                 favAlbums.setFilters(new ItemFilter[]{ItemFilter.IsFavorite});
-                favAlbums.setSortBy(new String[]{ItemSortBy.SortName});
+                favAlbums.setSortBy(new String[]{ItemSortBy.SORT_NAME.getSerialName()});
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_favorites), favAlbums, 60, false, true, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated, ChangeTriggerType.FavoriteUpdate}));
 
                 //AudioPlaylists
@@ -264,13 +267,13 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                 playlists.setIncludeItemTypes(new String[]{"Playlist"});
                 playlists.setImageTypeLimit(1);
                 playlists.setRecursive(true);
-                playlists.setSortBy(new String[]{ItemSortBy.DateCreated});
+                playlists.setSortBy(new String[]{ItemSortBy.DATE_CREATED.getSerialName()});
                 playlists.setSortOrder(SortOrder.Descending);
                 mRows.add(new BrowseRowDef(getString(R.string.lbl_playlists), playlists, 60, false, true, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated}, QueryType.AudioPlaylists));
 
                 rowLoader.loadRows(mRows);
                 break;
-            case CollectionType.LiveTv:
+            case LIVETV:
                 isLiveTvLibrary = true;
                 showViews = true;
 
@@ -346,7 +349,7 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                                 if (!getActive()) return;
 
                                 List<BaseItemDto> nearTimers = new ArrayList<>();
-                                long next24 = System.currentTimeMillis() + ticks24;
+                                long next24 = Instant.now().toEpochMilli() + ticks24;
                                 //Get scheduled items for next 24 hours
                                 for (TimerInfoDto timer : response.getItems()) {
                                     if (TimeUtils.convertToLocalDate(timer.getStartDate()).getTime() <= next24) {
@@ -372,8 +375,8 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
                                     List<BaseItemDto> dayItems = new ArrayList<>();
                                     List<BaseItemDto> weekItems = new ArrayList<>();
 
-                                    long past24 = System.currentTimeMillis() - ticks24;
-                                    long pastWeek = System.currentTimeMillis() - (ticks24 * 7);
+                                    long past24 = Instant.now().toEpochMilli() - ticks24;
+                                    long pastWeek = Instant.now().toEpochMilli() - (ticks24 * 7);
                                     for (BaseItemDto item : recordingsResponse.getItems()) {
                                         if (item.getDateCreated() != null) {
                                             if (TimeUtils.convertToLocalDate(item.getDateCreated()).getTime() >= past24) {
@@ -444,44 +447,46 @@ public class BrowseViewFragment extends EnhancedBrowseFragment {
 
                 break;
 
-            case "seriestimers":
-                mRows.add(new BrowseRowDef(getString(R.string.lbl_series_recordings), new SeriesTimerQuery()));
-                rowLoader.loadRows(mRows);
-                break;
             default:
-                // Fall back to rows defined by the view children
-                final List<BrowseRowDef> rows = new ArrayList<>();
-                final UUID userId = KoinJavaComponent.<UserRepository>get(UserRepository.class).getCurrentUser().getValue().getId();
+                boolean isRecordingsView = getArguments().getBoolean(Extras.IsLiveTvSeriesRecordings, false);
+                if (isRecordingsView) {
+                    mRows.add(new BrowseRowDef(getString(R.string.lbl_series_recordings), new SeriesTimerQuery()));
+                    rowLoader.loadRows(mRows);
+                } else {
+                    // Fall back to rows defined by the view children
+                    final List<BrowseRowDef> rows = new ArrayList<>();
+                    final UUID userId = KoinJavaComponent.<UserRepository>get(UserRepository.class).getCurrentUser().getValue().getId();
 
-                ItemQuery query = new ItemQuery();
-                query.setParentId(mFolder.getId().toString());
-                query.setUserId(userId.toString());
-                query.setImageTypeLimit(1);
-                query.setSortBy(new String[]{ItemSortBy.SortName});
+                    ItemQuery query = new ItemQuery();
+                    query.setParentId(mFolder.getId().toString());
+                    query.setUserId(userId.toString());
+                    query.setImageTypeLimit(1);
+                    query.setSortBy(new String[]{ItemSortBy.SORT_NAME.getSerialName()});
 
-                apiClient.getValue().GetItemsAsync(query, new LifecycleAwareResponse<ItemsResult>(getLifecycle()) {
-                    @Override
-                    public void onResponse(ItemsResult response) {
-                        if (!getActive()) return;
+                    apiClient.getValue().GetItemsAsync(query, new LifecycleAwareResponse<ItemsResult>(getLifecycle()) {
+                        @Override
+                        public void onResponse(ItemsResult response) {
+                            if (!getActive()) return;
 
-                        if (response.getTotalRecordCount() > 0) {
-                            for (BaseItemDto item : response.getItems()) {
-                                ItemQuery rowQuery = new StdItemQuery();
-                                rowQuery.setParentId(item.getId());
-                                rowQuery.setUserId(userId.toString());
-                                rows.add(new BrowseRowDef(item.getName(), rowQuery, 60, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated}));
+                            if (response.getTotalRecordCount() > 0) {
+                                for (BaseItemDto item : response.getItems()) {
+                                    ItemQuery rowQuery = new StdItemQuery();
+                                    rowQuery.setParentId(item.getId());
+                                    rowQuery.setUserId(userId.toString());
+                                    rows.add(new BrowseRowDef(item.getName(), rowQuery, 60, new ChangeTriggerType[]{ChangeTriggerType.LibraryUpdated}));
+                                }
                             }
+
+                            rowLoader.loadRows(rows);
                         }
 
-                        rowLoader.loadRows(rows);
-                    }
-
-                    @Override
-                    public void onError(Exception exception) {
-                        exception.printStackTrace();
-                    }
-                });
-                break;
+                        @Override
+                        public void onError(Exception exception) {
+                            Timber.e(exception, "Failed to get items");
+                        }
+                    });
+                    break;
+                }
         }
     }
 

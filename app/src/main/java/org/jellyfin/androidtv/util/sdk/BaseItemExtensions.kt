@@ -12,8 +12,9 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.LocationType
+import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.PlayAccess
-import java.util.Calendar
+import java.time.LocalDateTime
 
 fun BaseItemDto.getSeasonEpisodeName(context: Context): String {
 	val seasonNumber = when {
@@ -49,7 +50,6 @@ fun BaseItemDto.getDisplayName(context: Context): String {
 
 
 fun BaseItemDto?.canPlay() = this != null
-	&& playAccess == PlayAccess.FULL
 	&& isPlaceHolder != true
 	&& (type != BaseItemKind.EPISODE || locationType != LocationType.VIRTUAL)
 	&& type != BaseItemKind.PERSON
@@ -66,7 +66,7 @@ fun BaseItemDto.getProgramSubText(context: Context) = buildString {
 	episodeTitle?.let { append(episodeTitle, " ") }
 
 	// If the start time is on a different day, add the date
-	if (startDate?.dayOfYear != Calendar.getInstance()[Calendar.DAY_OF_YEAR])
+	if (startDate?.dayOfYear != LocalDateTime.now().dayOfYear)
 		append(TimeUtils.getFriendlyDate(context, TimeUtils.getDate(startDate)), " ")
 
 	// Add the start and end time
@@ -78,7 +78,7 @@ fun BaseItemDto.getProgramSubText(context: Context) = buildString {
 	))
 }
 
-fun BaseItemDto.getFirstPerson(searchedType: String) = people?.firstOrNull { it.type == searchedType }
+fun BaseItemDto.getFirstPerson(searchedType: PersonKind) = people?.firstOrNull { it.type == searchedType }
 
 fun BaseItemDto.getFullName(context: Context): String? = when (type) {
 	BaseItemKind.EPISODE -> buildList {

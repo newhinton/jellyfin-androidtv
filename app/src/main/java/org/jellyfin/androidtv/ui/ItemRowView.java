@@ -16,7 +16,9 @@ import org.jellyfin.androidtv.databinding.ItemRowBinding;
 import org.jellyfin.androidtv.util.TimeUtils;
 import org.jellyfin.androidtv.util.sdk.BaseItemExtensionsKt;
 import org.jellyfin.sdk.model.api.BaseItemDto;
-import org.jellyfin.sdk.model.constant.MediaType;
+import org.jellyfin.sdk.model.api.MediaType;
+
+import java.util.UUID;
 
 public class ItemRowView extends FrameLayout {
     Context mContext;
@@ -118,7 +120,7 @@ public class ItemRowView extends FrameLayout {
 
     public void updateWatched() {
         if (mBaseItem == null) return;
-        if (MediaType.Video.equals(mBaseItem.getMediaType()) && mBaseItem.getUserData() != null && mBaseItem.getUserData().getPlayed()) {
+        if (MediaType.VIDEO.equals(mBaseItem.getMediaType()) && mBaseItem.getUserData() != null && mBaseItem.getUserData().getPlayed()) {
             mWatchedMark.setText("✓");
         } else {
             mWatchedMark.setText("");
@@ -149,7 +151,7 @@ public class ItemRowView extends FrameLayout {
         return playing;
     }
 
-    public boolean setPlaying(String id) {
+    public boolean setPlaying(UUID id) {
         return setPlaying(getItem().getId().equals(id));
     }
 

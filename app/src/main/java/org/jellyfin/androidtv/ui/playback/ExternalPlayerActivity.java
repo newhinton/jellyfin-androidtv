@@ -34,6 +34,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind;
 import org.koin.java.KoinJavaComponent;
 
 import java.io.File;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -60,6 +61,7 @@ public class ExternalPlayerActivity extends FragmentActivity {
     private Lazy<VideoQueueManager> videoQueueManager = inject(VideoQueueManager.class);
     private Lazy<org.jellyfin.sdk.api.client.ApiClient> api = inject(org.jellyfin.sdk.api.client.ApiClient.class);
     private Lazy<PlaybackControllerContainer> playbackControllerContainer = inject(PlaybackControllerContainer.class);
+    private Lazy<ReportingHelper> reportingHelper = inject(ReportingHelper.class);
 
     static final int RUNTIME_TICKS_TO_MS = 10000;
 
@@ -113,7 +115,7 @@ public class ExternalPlayerActivity extends FragmentActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        long playerFinishedTime = System.currentTimeMillis();
+        long playerFinishedTime = Instant.now().toEpochMilli();
         Timber.d("Returned from player, result <%d>, extra data <%s>", resultCode, data);
         org.jellyfin.sdk.model.api.BaseItemDto item = mItemsToPlay.get(mCurrentNdx);
         long runtime = item.getRunTimeTicks() != null ? item.getRunTimeTicks() / RUNTIME_TICKS_TO_MS : 0;
@@ -150,7 +152,7 @@ public class ExternalPlayerActivity extends FragmentActivity {
         Long reportPos = (long) pos * RUNTIME_TICKS_TO_MS;
 
         stopReportLoop();
-        ReportingHelper.reportStopped(item, mCurrentStreamInfo, reportPos);
+        reportingHelper.getValue().reportStopped(item, mCurrentStreamInfo, reportPos);
 
         //Check against a total failure (no apps installed)
         if (playerFinishedTime - mLastPlayerStart < 1000) {
@@ -230,15 +232,14 @@ public class ExternalPlayerActivity extends FragmentActivity {
     }
 
     private void startReportLoop() {
-        // FIXME: Don't use the getApplication method..
         PlaybackController playbackController = playbackControllerContainer.getValue().getPlaybackController();
-        ReportingHelper.reportProgress(playbackController, mItemsToPlay.get(mCurrentNdx), mCurrentStreamInfo, null, false);
+        reportingHelper.getValue().reportProgress(playbackController, mItemsToPlay.get(mCurrentNdx), mCurrentStreamInfo, null, false);
         mReportLoop = new Runnable() {
             @Override
             public void run() {
                 if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) return;
 
-                ReportingHelper.reportProgress(playbackController, mItemsToPlay.get(mCurrentNdx), mCurrentStreamInfo, mPosition * RUNTIME_TICKS_TO_MS, false);
+                reportingHelper.getValue().reportProgress(playbackController, mItemsToPlay.get(mCurrentNdx), mCurrentStreamInfo, mPosition * RUNTIME_TICKS_TO_MS, false);
                 mHandler.postDelayed(this, 15000);
             }
         };
@@ -275,7 +276,7 @@ public class ExternalPlayerActivity extends FragmentActivity {
 
         //Build options for player
         VideoOptions options = new VideoOptions();
-        options.setItemId(item.getId().toString());
+        options.setItemId(item.getId());
         options.setMediaSources(item.getMediaSources());
         options.setMaxBitrate(Utils.getMaxBitrate(userPreferences.getValue()));
         options.setProfile(new ExternalPlayerProfile());
@@ -373,8 +374,8 @@ public class ExternalPlayerActivity extends FragmentActivity {
         Timber.i("Starting external playback of path: %s and mime: video/%s at position/ms: %s", path, container, mPosition);
 
         try {
-            mLastPlayerStart = System.currentTimeMillis();
-            ReportingHelper.reportStart(item, mPosition * RUNTIME_TICKS_TO_MS);
+            mLastPlayerStart = Instant.now().toEpochMilli();
+            reportingHelper.getValue().reportStart(item, mPosition * RUNTIME_TICKS_TO_MS);
             startReportLoop();
             startActivityForResult(external, 1);
         } catch (ActivityNotFoundException e) {

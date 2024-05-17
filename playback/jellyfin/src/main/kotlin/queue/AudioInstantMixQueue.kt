@@ -1,8 +1,7 @@
 package org.jellyfin.playback.jellyfin.queue
 
 import org.jellyfin.playback.core.queue.PagedQueue
-import org.jellyfin.playback.core.queue.item.QueueEntry
-import org.jellyfin.playback.jellyfin.queue.item.BaseItemDtoUserQueueEntry
+import org.jellyfin.playback.core.queue.QueueEntry
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.instantMixApi
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -36,13 +35,12 @@ class AudioInstantMixQueue(
 		if (offset > 0) return emptyList()
 
 		val result by api.instantMixApi.getInstantMixFromItem(
-			id = item.id,
-			userId = api.userId,
+			itemId = item.id,
 			fields = listOf(ItemFields.MEDIA_SOURCES),
 			// Pagination
 			limit = size,
 		)
 		this.size = result.totalRecordCount
-		return result.items.orEmpty().map { BaseItemDtoUserQueueEntry.build(api, it) }
+		return result.items.orEmpty().map { createBaseItemQueueEntry(api, it) }
 	}
 }

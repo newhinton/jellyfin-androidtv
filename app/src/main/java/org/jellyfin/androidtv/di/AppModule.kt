@@ -22,6 +22,7 @@ import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepositoryImpl
 import org.jellyfin.androidtv.data.service.BackgroundService
 import org.jellyfin.androidtv.ui.ScreensaverViewModel
+import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
 import org.jellyfin.androidtv.ui.navigation.NavigationRepositoryImpl
@@ -35,13 +36,14 @@ import org.jellyfin.androidtv.ui.search.SearchViewModel
 import org.jellyfin.androidtv.ui.startup.ServerAddViewModel
 import org.jellyfin.androidtv.ui.startup.StartupViewModel
 import org.jellyfin.androidtv.ui.startup.UserLoginViewModel
+import org.jellyfin.androidtv.util.KeyProcessor
 import org.jellyfin.androidtv.util.MarkdownRenderer
+import org.jellyfin.androidtv.util.apiclient.ReportingHelper
 import org.jellyfin.androidtv.util.sdk.legacy
 import org.jellyfin.apiclient.AppInfo
 import org.jellyfin.apiclient.android
 import org.jellyfin.apiclient.logging.AndroidLogger
 import org.jellyfin.sdk.android.androidDevice
-import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.createJellyfin
 import org.jellyfin.sdk.model.ClientInfo
 import org.jellyfin.sdk.model.DeviceInfo
@@ -75,8 +77,6 @@ val appModule = module {
 		// Create an empty API instance, the actual values are set by the SessionRepository
 		get<JellyfinSdk>().createApi()
 	}
-
-	single { get<ApiClient>().ws() }
 
 	single { SocketHandler(get(), get(), get(), get(), get(), get(), get(), get()) }
 
@@ -112,7 +112,7 @@ val appModule = module {
 
 	single<UserRepository> { UserRepositoryImpl() }
 	single<UserViewsRepository> { UserViewsRepositoryImpl(get()) }
-	single<NotificationsRepository> { NotificationsRepositoryImpl(get(), get(), get()) }
+	single<NotificationsRepository> { NotificationsRepositoryImpl(get(), get()) }
 	single<ItemMutationRepository> { ItemMutationRepositoryImpl(get(), get()) }
 	single<CustomMessageRepository> { CustomMessageRepositoryImpl() }
 	single<NavigationRepository> { NavigationRepositoryImpl(Destinations.home) }
@@ -129,6 +129,9 @@ val appModule = module {
 	single { BackgroundService(get(), get(), get(), get(), get()) }
 
 	single { MarkdownRenderer(get()) }
+	single { ItemLauncher() }
+	single { KeyProcessor() }
+	single { ReportingHelper() }
 
-	factory { (context: Context) -> SearchFragmentDelegate(context, get()) }
+	factory { (context: Context) -> SearchFragmentDelegate(context, get(), get()) }
 }

@@ -59,12 +59,13 @@ import org.jellyfin.apiclient.model.querying.UpcomingEpisodesQuery;
 import org.jellyfin.apiclient.model.results.ChannelInfoDtoResult;
 import org.jellyfin.apiclient.model.results.SeriesTimerInfoDtoResult;
 import org.jellyfin.sdk.model.api.BaseItemPerson;
+import org.jellyfin.sdk.model.api.ItemSortBy;
 import org.jellyfin.sdk.model.api.SortOrder;
 import org.jellyfin.sdk.model.api.UserDto;
 import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest;
-import org.jellyfin.sdk.model.constant.ItemSortBy;
 import org.koin.java.KoinJavaComponent;
 
+import java.time.Instant;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -93,14 +94,14 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
     private GetResumeItemsRequest resumeQuery;
     private QueryType queryType;
 
-    private String mSortBy;
+    private ItemSortBy mSortBy;
     private SortOrder sortOrder;
     private FilterOptions mFilters;
 
     private EmptyLifecycleAwareResponse mRetrieveFinishedListener;
 
     private ChangeTriggerType[] reRetrieveTriggers = new ChangeTriggerType[]{};
-    private Calendar lastFullRetrieve;
+    private Instant lastFullRetrieve;
 
     private BaseItemPerson[] mPersons;
     private List<ChapterItemInfo> mChapters;
@@ -427,25 +428,25 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
             sortOrder = option.order;
             switch (queryType) {
                 case Artists:
-                    mArtistsQuery.setSortBy(new String[]{mSortBy});
+                    mArtistsQuery.setSortBy(new String[]{mSortBy.getSerialName(), ItemSortBy.SORT_NAME.getSerialName()});
                     mArtistsQuery.setSortOrder(ModelCompat.asLegacy(option.order));
                     break;
                 case AlbumArtists:
-                    mAlbumArtistsQuery.setSortBy(new String[]{mSortBy});
+                    mAlbumArtistsQuery.setSortBy(new String[]{mSortBy.getSerialName(), ItemSortBy.SORT_NAME.getSerialName()});
                     mAlbumArtistsQuery.setSortOrder(ModelCompat.asLegacy(option.order));
                     break;
                 default:
-                    mQuery.setSortBy(new String[]{mSortBy});
+                    mQuery.setSortBy(new String[]{mSortBy.getSerialName(), ItemSortBy.SORT_NAME.getSerialName()});
                     mQuery.setSortOrder(ModelCompat.asLegacy(option.order));
                     break;
             }
-            if (!ItemSortBy.SortName.equals(option.value)) {
+            if (!ItemSortBy.SORT_NAME.equals(option.value)) {
                 setStartLetter(null);
             }
         }
     }
 
-    public String getSortBy() {
+    public ItemSortBy getSortBy() {
         return mSortBy;
     }
 
@@ -635,22 +636,16 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
         for (ChangeTriggerType trigger : reRetrieveTriggers) {
             switch (trigger) {
                 case LibraryUpdated:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastLibraryChange();
+                    retrieve |= dataRefreshService.getLastLibraryChange() != null && lastFullRetrieve.isBefore(dataRefreshService.getLastLibraryChange());
                     break;
                 case MoviePlayback:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastMoviePlayback();
+                    retrieve |= dataRefreshService.getLastMoviePlayback() != null && lastFullRetrieve.isBefore(dataRefreshService.getLastMoviePlayback());
                     break;
                 case TvPlayback:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastTvPlayback();
-                    break;
-                case MusicPlayback:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastMusicPlayback();
+                    retrieve |= dataRefreshService.getLastTvPlayback() != null && lastFullRetrieve.isBefore(dataRefreshService.getLastTvPlayback());
                     break;
                 case FavoriteUpdate:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastFavoriteUpdate();
-                    break;
-                case VideoQueueChange:
-                    retrieve |= lastFullRetrieve.getTimeInMillis() < dataRefreshService.getLastVideoQueueChange();
+                    retrieve |= dataRefreshService.getLastFavoriteUpdate() != null && lastFullRetrieve.isBefore(dataRefreshService.getLastFavoriteUpdate());
                     break;
                 case GuideNeedsLoad:
                     Calendar start = new GregorianCalendar(TimeZone.getTimeZone("Z"));
@@ -674,7 +669,7 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
 
     public void Retrieve() {
         notifyRetrieveStarted();
-        lastFullRetrieve = Calendar.getInstance();
+        lastFullRetrieve = Instant.now();
         itemsLoaded = 0;
         switch (queryType) {
             case Items:
@@ -822,7 +817,7 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
                     setTotalItems(response.getTotalRecordCount());
 
                     ItemRowAdapterHelperKt.setItems(ItemRowAdapter.this, response.getItems(), (item, i) -> {
-                        if (userViewsRepository.getValue().isSupported(item.getCollectionType())) {
+                        if (userViewsRepository.getValue().isSupported(ModelCompat.asSdk(item).getCollectionType())) {
                             item.setDisplayPreferencesId(item.getId());
                             return new BaseRowItem(i, item, preferParentThumb, staticHeight);
                         } else {

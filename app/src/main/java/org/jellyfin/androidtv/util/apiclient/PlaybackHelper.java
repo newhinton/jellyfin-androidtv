@@ -14,7 +14,6 @@ import org.jellyfin.androidtv.ui.playback.PlaybackLauncher;
 import org.jellyfin.androidtv.ui.playback.VideoQueueManager;
 import org.jellyfin.androidtv.util.TimeUtils;
 import org.jellyfin.androidtv.util.Utils;
-import org.jellyfin.androidtv.util.sdk.compat.FakeBaseItem;
 import org.jellyfin.androidtv.util.sdk.compat.JavaCompat;
 import org.jellyfin.androidtv.util.sdk.compat.ModelCompat;
 import org.jellyfin.apiclient.interaction.ApiClient;
@@ -24,13 +23,12 @@ import org.jellyfin.apiclient.model.dto.BaseItemType;
 import org.jellyfin.apiclient.model.livetv.ChannelInfoDto;
 import org.jellyfin.apiclient.model.querying.EpisodeQuery;
 import org.jellyfin.apiclient.model.querying.ItemFields;
-import org.jellyfin.apiclient.model.querying.ItemFilter;
 import org.jellyfin.apiclient.model.querying.ItemQuery;
 import org.jellyfin.apiclient.model.querying.ItemsResult;
 import org.jellyfin.apiclient.model.querying.SimilarItemsQuery;
 import org.jellyfin.sdk.model.api.BaseItemKind;
-import org.jellyfin.sdk.model.constant.ItemSortBy;
-import org.jellyfin.sdk.model.constant.MediaType;
+import org.jellyfin.sdk.model.api.ItemSortBy;
+import org.jellyfin.sdk.model.api.MediaType;
 import org.koin.java.KoinJavaComponent;
 
 import java.util.ArrayList;
@@ -113,7 +111,7 @@ public class PlaybackHelper {
                 query.setIsMissing(false);
                 query.setIsVirtualUnaired(false);
                 query.setIncludeItemTypes(new String[]{"Episode", "Movie", "Video"});
-                query.setSortBy(new String[]{shuffle ? ItemSortBy.Random : ItemSortBy.SortName});
+                query.setSortBy(new String[]{shuffle ? ItemSortBy.RANDOM.getSerialName() : ItemSortBy.SORT_NAME.getSerialName()});
                 query.setRecursive(true);
                 query.setLimit(ITEM_QUERY_LIMIT);
                 query.setFields(new ItemFields[] {
@@ -141,10 +139,10 @@ public class PlaybackHelper {
                 //get all songs
                 query.setIsMissing(false);
                 query.setIsVirtualUnaired(false);
-                query.setMediaTypes(new String[]{MediaType.Audio});
+                query.setMediaTypes(new String[]{MediaType.AUDIO.getSerialName()});
                 query.setSortBy(mainItem.getType() == BaseItemKind.MUSIC_ARTIST ?
-                        new String[] {ItemSortBy.Album,ItemSortBy.SortName} :
-                            new String[] {ItemSortBy.SortName});
+                        new String[] {ItemSortBy.ALBUM_ARTIST.getSerialName(),ItemSortBy.SORT_NAME.getSerialName()} :
+                            new String[] {ItemSortBy.SORT_NAME.getSerialName()});
                 query.setRecursive(true);
                 query.setLimit(ITEM_QUERY_LIMIT);
                 query.setFields(new ItemFields[] {
@@ -162,14 +160,10 @@ public class PlaybackHelper {
                 });
                 break;
             case PLAYLIST:
-                if (mainItem.getId().equals(FakeBaseItem.INSTANCE.getFAV_SONGS_ID().toString())) {
-                    query.setFilters(new ItemFilter[] {ItemFilter.IsFavoriteOrLikes});
-                } else {
-                    query.setParentId(mainItem.getId().toString());
-                }
+                query.setParentId(mainItem.getId().toString());
                 query.setIsMissing(false);
                 query.setIsVirtualUnaired(false);
-                if (shuffle) query.setSortBy(new String[] {ItemSortBy.Random});
+                if (shuffle) query.setSortBy(new String[] {ItemSortBy.RANDOM.getSerialName()});
                 query.setRecursive(true);
                 query.setLimit(ITEM_QUERY_LIMIT);
                 query.setFields(new ItemFields[] {
@@ -272,7 +266,6 @@ public class PlaybackHelper {
     public static void play(final org.jellyfin.sdk.model.api.BaseItemDto item, final int pos, final boolean shuffle, final Context activity) {
         PlaybackLauncher playbackLauncher = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class);
         NavigationRepository navigationRepository = KoinJavaComponent.<NavigationRepository>get(NavigationRepository.class);
-        if (playbackLauncher.interceptPlayRequest(activity, item)) return;
 
         getItemsToPlay(item, pos == 0 && item.getType() == BaseItemKind.MOVIE, shuffle, new Response<List<org.jellyfin.sdk.model.api.BaseItemDto>>() {
             @Override
@@ -283,7 +276,7 @@ public class PlaybackHelper {
                         KoinJavaComponent.<MediaManager>get(MediaManager.class).playNow(activity, response, 0, shuffle);
                         break;
                     case PLAYLIST:
-                        if (MediaType.Audio.equals(item.getMediaType())) {
+                        if (MediaType.AUDIO.equals(item.getMediaType())) {
                             KoinJavaComponent.<MediaManager>get(MediaManager.class).playNow(activity, response, 0, shuffle);
                         } else {
                             BaseItemKind itemType = response.size() > 0 ? response.get(0).getType() : null;
@@ -312,7 +305,7 @@ public class PlaybackHelper {
         });
     }
 
-    public static void retrieveAndPlay(String id, boolean shuffle, Context activity) {
+    public static void retrieveAndPlay(UUID id, boolean shuffle, Context activity) {
         retrieveAndPlay(id, shuffle, null, activity);
     }
 
@@ -325,9 +318,9 @@ public class PlaybackHelper {
         }
     }
 
-    public static void retrieveAndPlay(String id, final boolean shuffle, final Long position, final Context activity) {
+    public static void retrieveAndPlay(UUID id, final boolean shuffle, final Long position, final Context activity) {
         UUID userId = KoinJavaComponent.<SessionRepository>get(SessionRepository.class).getCurrentSession().getValue().getUserId();
-        KoinJavaComponent.<ApiClient>get(ApiClient.class).GetItemAsync(id, userId.toString(), new Response<BaseItemDto>() {
+        KoinJavaComponent.<ApiClient>get(ApiClient.class).GetItemAsync(id.toString(), userId.toString(), new Response<BaseItemDto>() {
             @Override
             public void onResponse(BaseItemDto response) {
                 Long pos = position != null ? position / 10000 : response.getUserData() != null ? (response.getUserData().getPlaybackPositionTicks() / 10000) - getResumePreroll() : 0;
@@ -343,11 +336,7 @@ public class PlaybackHelper {
     }
 
     public static void playInstantMix(Context context, org.jellyfin.sdk.model.api.BaseItemDto item) {
-        PlaybackLauncher playbackLauncher = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class);
-        if (playbackLauncher.interceptPlayRequest(context, item)) return;
-
-        String seedId = item.getId().toString();
-        getInstantMixAsync(seedId, new Response<BaseItemDto[]>() {
+        getInstantMixAsync(item.getId(), new Response<BaseItemDto[]>() {
             @Override
             public void onResponse(BaseItemDto[] response) {
                 if (response.length > 0) {
@@ -359,10 +348,10 @@ public class PlaybackHelper {
         });
     }
 
-    public static void getInstantMixAsync(String seedId, final Response<BaseItemDto[]> outerResponse) {
+    public static void getInstantMixAsync(UUID seedId, final Response<BaseItemDto[]> outerResponse) {
         UUID userId = KoinJavaComponent.<SessionRepository>get(SessionRepository.class).getCurrentSession().getValue().getUserId();
         SimilarItemsQuery query = new SimilarItemsQuery();
-        query.setId(seedId);
+        query.setId(seedId.toString());
         query.setUserId(userId.toString());
         query.setFields(new ItemFields[] {
                 ItemFields.PrimaryImageAspectRatio,

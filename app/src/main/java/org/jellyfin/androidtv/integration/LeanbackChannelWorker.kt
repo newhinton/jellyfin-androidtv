@@ -41,11 +41,12 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageFormat
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
-import org.jellyfin.sdk.model.constant.MediaType
+import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.extensions.ticks
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
+import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
@@ -198,7 +199,7 @@ class LeanbackChannelWorker(
 		}
 
 		// Update logo
-		ResourcesCompat.getDrawable(context.resources, R.drawable.app_icon, context.theme)?.let {
+		ResourcesCompat.getDrawable(context.resources, R.mipmap.app_icon, context.theme)?.let {
 			ChannelLogoUtils.storeChannelLogo(
 				context,
 				ContentUris.parseId(uri),
@@ -271,7 +272,7 @@ class LeanbackChannelWorker(
 					fields = listOf(ItemFields.DATE_CREATED),
 					imageTypeLimit = 1,
 					limit = 10,
-					mediaTypes = listOf(MediaType.Video),
+					mediaTypes = listOf(MediaType.VIDEO),
 					includeItemTypes = listOf(BaseItemKind.EPISODE, BaseItemKind.MOVIE),
 					excludeActiveSessions = true,
 				).content.items.orEmpty()
@@ -279,7 +280,6 @@ class LeanbackChannelWorker(
 
 			val nextUp = async {
 				api.tvShowsApi.getNextUp(
-					userId = api.userId,
 					imageTypeLimit = 1,
 					limit = 10,
 					fields = listOf(ItemFields.DATE_CREATED),
@@ -455,7 +455,7 @@ class LeanbackChannelWorker(
 
 			setLastEngagementTimeUtcMillis(
 				engagement?.toInstant(ZoneOffset.UTC)?.toEpochMilli()
-					?: System.currentTimeMillis()
+					?: Instant.now().toEpochMilli()
 			)
 
 			// Episode runtime has been determined

@@ -33,10 +33,9 @@ import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.DeviceInfo
 import org.jellyfin.sdk.model.api.AuthenticationResult
-import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
-import java.util.Date
+import java.time.Instant
 
 /**
  * Repository to manage authentication of the user in the app.
@@ -127,7 +126,7 @@ class AuthenticationRepositoryImpl(
 			accessToken = result.accessToken,
 			requirePassword = userInfo.hasPassword,
 			imageTag = userInfo.primaryImageTag,
-			lastUsed = Date().time,
+			lastUsed = Instant.now().toEpochMilli(),
 		)
 
 		authenticateFinish(server, userInfo, accessToken)
@@ -166,7 +165,7 @@ class AuthenticationRepositoryImpl(
 
 		val updatedUser = currentUser?.copy(
 			name = userInfo.name!!,
-			lastUsed = Date().time,
+			lastUsed = Instant.now().toEpochMilli(),
 			requirePassword = userInfo.hasPassword,
 			imageTag = userInfo.primaryImageTag,
 			accessToken = accessToken,
@@ -185,11 +184,11 @@ class AuthenticationRepositoryImpl(
 		if (authenticated) {
 			// Update last use in store
 			authenticationStore.getServer(server.id)?.let { storedServer ->
-				authenticationStore.putServer(server.id, storedServer.copy(lastUsed = Date().time))
+				authenticationStore.putServer(server.id, storedServer.copy(lastUsed = Instant.now().toEpochMilli()))
 			}
 
 			authenticationStore.getUser(server.id, user.id)?.let { storedUser ->
-				authenticationStore.putUser(server.id, user.id, storedUser.copy(lastUsed = Date().time))
+				authenticationStore.putUser(server.id, user.id, storedUser.copy(lastUsed = Instant.now().toEpochMilli()))
 			}
 		}
 
@@ -209,7 +208,6 @@ class AuthenticationRepositoryImpl(
 		jellyfin.createApi(server.address).imageApi.getUserImageUrl(
 			userId = user.id,
 			tag = tag,
-			imageType = ImageType.PRIMARY,
 			maxHeight = ImageUtils.MAX_PRIMARY_IMAGE_HEIGHT
 		)
 	}

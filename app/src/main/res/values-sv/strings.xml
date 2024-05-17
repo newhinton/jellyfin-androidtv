@@ -516,4 +516,43 @@
     <string name="person_birthday_and_age">Född %1$s (%2$d)</string>
     <string name="dolby_vision">Dolby Vision</string>
     <string name="clear_image_cache">Rensa bildcache</string>
+    <string name="random">Slumpmässig</string>
+    <string name="unreleased">Inte släppt än</string>
+    <string name="lbl_home">Hem</string>
+    <string name="indicator_subtitles">CC</string>
+    <plurals name="songs">
+        <item quantity="one">%1$s Låt</item>
+        <item quantity="other">%1$s Låtar</item>
+    </plurals>
+    <plurals name="tv_series">
+        <item quantity="one">%1$s TV Serie</item>
+        <item quantity="other">%1$s TV Serier</item>
+    </plurals>
+    <plurals name="albums">
+        <item quantity="one">%1$s album</item>
+        <item quantity="other">%1$s Album</item>
+    </plurals>
+    <string name="pref_screensaver_ageratingmax_zero">Alla åldrar</string>
+    <plurals name="movies">
+        <item quantity="one">%1$s Film</item>
+        <item quantity="other">%1$s Filmer</item>
+    </plurals>
+    <string name="ac3">DD</string>
+    <string name="dca">DTS</string>
+    <string name="eac3">DD+</string>
+    <string name="dts_x">DTS:X</string>
+    <string name="dolby_atmos">Dolby Atmos</string>
+    <string name="dts_hd">DTS:HD</string>
+    <string name="clear_image_cache_content">Använt: %1$s</string>
+    <string name="pref_screensaver_ageratingmax">Maximal åldersgräns</string>
+    <string name="pref_screensaver_ageratingmax_entry">Upp till %1$d års ålder</string>
+    <string name="pref_screensaver_ageratingmax_unlimited">Inaktivera maxålder</string>
+    <string name="pref_screensaver_ageratingrequired_title">Kräv åldersbegränsning</string>
+    <string name="pref_screensaver_ageratingrequired_disabled">Visa all titlar</string>
+    <plurals name="items">
+        <item quantity="one">%1$s titel</item>
+        <item quantity="other">%1$s titlar</item>
+    </plurals>
+    <string name="pref_screensaver_ageratingrequired_enabled">Visa bara de titlar som har åldersbegränsning</string>
+    <string name="pref_playback_advanced">Avancerade uppspelningsinställningar</string>
 </resources>

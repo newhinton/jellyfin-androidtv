@@ -7,7 +7,8 @@
         <item name="android:colorPrimaryDark">@color/grey</item>
         <item name="android:colorAccent">@color/jellyfin_blue</item>
         <!-- Background resource or color -->
-        <item name="android:windowBackground">@color/not_quite_black</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="defaultBackground">@color/not_quite_black</item>
         <!-- Background color for CardViews -->
         <item name="cardImageBackground">@color/grey</item>
         <item name="cardViewBackground">@android:color/transparent</item>
@@ -36,6 +37,7 @@
         <!-- Custom Styles for Elements -->
         <item name="android:datePickerStyle">@style/DatePickerCustom</item>
         <item name="rowHeaderStyle">@style/Widget.Jellyfin.Row.Header</item>
+        <item name="browseTitleViewLayout">@layout/view_lb_browse_title</item>
 
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="android:popupMenuStyle">@style/PopupMenu</item>
@@ -87,7 +89,6 @@
     </style>
 
     <style name="Theme.Jellyfin.Preferences" parent="Theme.Jellyfin">
-        <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowAnimationStyle">@style/WindowAnimation.SlideRight</item>

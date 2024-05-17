@@ -46,19 +46,12 @@ public class ItemListView extends FrameLayout {
         mItemIds.clear();
     }
 
-    public void addItems(List<BaseItemDto> items) {
-        int i = 0;
-        for (BaseItemDto item : items) {
-            addItem(item, i++);
-        }
-    }
-
     public void addItem(BaseItemDto item, int ndx) {
         mList.addView(new ItemRowView(mContext, item, ndx, mRowSelectedListener, mRowClickedListener));
         mItemIds.add(item.getId());
     }
 
-    public ItemRowView updatePlaying(String id) {
+    public ItemRowView updatePlaying(UUID id) {
         //look through our song rows and update the playing indicator
         ItemRowView ret = null;
         for (int i = 0; i < mList.getChildCount(); i++) {

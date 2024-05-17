@@ -5,14 +5,15 @@ import org.jellyfin.playback.core.mediastream.MediaConversionMethod
 import org.jellyfin.playback.core.mediastream.MediaStream
 import org.jellyfin.playback.core.mediastream.MediaStreamContainer
 import org.jellyfin.playback.core.mediastream.PlayableMediaStream
-import org.jellyfin.playback.core.queue.item.QueueEntry
+import org.jellyfin.playback.core.queue.QueueEntry
 import org.jellyfin.playback.core.support.PlaySupportReport
-import org.jellyfin.playback.jellyfin.queue.item.BaseItemDtoUserQueueEntry
+import org.jellyfin.playback.jellyfin.queue.baseItem
+import org.jellyfin.playback.jellyfin.queue.mediaSourceId
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.audioApi
 import org.jellyfin.sdk.api.client.extensions.dynamicHlsApi
-import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.DeviceProfile
+import org.jellyfin.sdk.model.api.MediaType
 
 class AudioMediaStreamResolver(
 	val api: ApiClient,
@@ -42,7 +43,7 @@ class AudioMediaStreamResolver(
 	private fun MediaInfo.getTranscodeStream() = BasicMediaStream(
 		identifier = playSessionId,
 		conversionMethod = MediaConversionMethod.Transcode,
-		// The server doesn't provide us with the transcode information os we return mock data
+		// The server doesn't provide us with the transcode information so we return mock data
 		container = MediaStreamContainer(format = "unknown"),
 		tracks = emptyList()
 	)
@@ -51,10 +52,10 @@ class AudioMediaStreamResolver(
 		queueEntry: QueueEntry,
 		testStream: (stream: MediaStream) -> PlaySupportReport,
 	): PlayableMediaStream? {
-		if (queueEntry !is BaseItemDtoUserQueueEntry) return null
-		if (queueEntry.baseItem.type != BaseItemKind.AUDIO) return null
+		val baseItem = queueEntry.baseItem
+		if (baseItem == null || baseItem.mediaType != MediaType.AUDIO) return null
 
-		val mediaInfo = getPlaybackInfo(queueEntry.baseItem)
+		val mediaInfo = getPlaybackInfo(baseItem, queueEntry.mediaSourceId)
 
 		// Test for direct play support
 		val directPlayStream = mediaInfo.getDirectPlayStream()
@@ -62,7 +63,7 @@ class AudioMediaStreamResolver(
 			return directPlayStream.toPlayableMediaStream(
 				queueEntry = queueEntry,
 				url = api.audioApi.getAudioStreamUrl(
-					itemId = queueEntry.baseItem.id,
+					itemId = baseItem.id,
 					mediaSourceId = mediaInfo.mediaSource.id,
 					playSessionId = mediaInfo.playSessionId,
 					static = true,
@@ -78,7 +79,7 @@ class AudioMediaStreamResolver(
 					return remuxStream.toPlayableMediaStream(
 						queueEntry = queueEntry,
 						url = api.audioApi.getAudioStreamByContainerUrl(
-							itemId = queueEntry.baseItem.id,
+							itemId = baseItem.id,
 							mediaSourceId = mediaInfo.mediaSource.id,
 							playSessionId = mediaInfo.playSessionId,
 							container = container,
@@ -96,7 +97,7 @@ class AudioMediaStreamResolver(
 			return transcodeStream.toPlayableMediaStream(
 				queueEntry = queueEntry,
 				url = api.dynamicHlsApi.getMasterHlsAudioPlaylistUrl(
-					itemId = queueEntry.baseItem.id,
+					itemId = baseItem.id,
 					mediaSourceId = requireNotNull(mediaInfo.mediaSource.id),
 					playSessionId = mediaInfo.playSessionId,
 					tag = mediaInfo.mediaSource.eTag,

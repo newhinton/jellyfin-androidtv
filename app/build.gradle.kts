@@ -118,6 +118,7 @@ dependencies {
 	implementation(libs.androidx.core)
 	implementation(libs.androidx.activity)
 	implementation(libs.androidx.fragment)
+	implementation(libs.androidx.fragment.compose)
 	implementation(libs.androidx.leanback.core)
 	implementation(libs.androidx.leanback.preference)
 	implementation(libs.androidx.preference)
@@ -158,10 +159,6 @@ dependencies {
 	// Logging
 	implementation(libs.timber)
 	implementation(libs.slf4j.timber)
-
-	// Debugging
-	if (getProperty("leakcanary.enable")?.toBoolean() == true)
-		debugImplementation(libs.leakcanary)
 
 	// Compatibility (desugaring)
 	coreLibraryDesugaring(libs.android.desugar)

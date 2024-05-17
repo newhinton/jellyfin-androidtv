@@ -17,14 +17,12 @@ import org.jellyfin.androidtv.ui.playback.PlaybackLauncher;
 import org.jellyfin.androidtv.ui.playback.VideoQueueManager;
 import org.jellyfin.androidtv.util.Utils;
 import org.jellyfin.androidtv.util.apiclient.PlaybackHelper;
-import org.jellyfin.androidtv.util.sdk.compat.FakeBaseItem;
 import org.jellyfin.androidtv.util.sdk.compat.JavaCompat;
 import org.jellyfin.androidtv.util.sdk.compat.ModelCompat;
 import org.jellyfin.apiclient.interaction.Response;
 import org.jellyfin.sdk.model.api.BaseItemDto;
 import org.jellyfin.sdk.model.api.BaseItemKind;
-import org.jellyfin.sdk.model.api.PlayAccess;
-import org.jellyfin.sdk.model.constant.CollectionType;
+import org.jellyfin.sdk.model.api.CollectionType;
 import org.jellyfin.sdk.model.serializer.UUIDSerializerKt;
 import org.koin.java.KoinJavaComponent;
 
@@ -32,41 +30,44 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import kotlin.Lazy;
 import timber.log.Timber;
 
 public class ItemLauncher {
-    public static void launchUserView(@Nullable final BaseItemDto baseItem) {
+    private final Lazy<NavigationRepository> navigationRepository = KoinJavaComponent.<NavigationRepository>inject(NavigationRepository.class);
+    private final Lazy<PreferencesRepository> preferencesRepository = KoinJavaComponent.<PreferencesRepository>inject(org.jellyfin.androidtv.preference.PreferencesRepository .class);
+    private final Lazy<MediaManager> mediaManager = KoinJavaComponent.<MediaManager>inject(MediaManager.class);
+    private final Lazy<VideoQueueManager> videoQueueManager = KoinJavaComponent.<VideoQueueManager>inject(VideoQueueManager.class);
+    private final Lazy<PlaybackLauncher> playbackLauncher = KoinJavaComponent.<PlaybackLauncher>inject(PlaybackLauncher.class);
+
+    public void launchUserView(@Nullable final BaseItemDto baseItem) {
         Timber.d("**** Collection type: %s", baseItem.getCollectionType());
 
-        NavigationRepository navigationRepository = KoinJavaComponent.<NavigationRepository>get(NavigationRepository.class);
         Destination destination = getUserViewDestination(baseItem);
 
-        navigationRepository.navigate(destination);
+        navigationRepository.getValue().navigate(destination);
     }
 
-    public static Destination.Fragment getUserViewDestination(@Nullable final BaseItemDto baseItem) {
-        String collectionType = baseItem == null ? null : baseItem.getCollectionType();
-        if (collectionType == null) collectionType = "";
+    public Destination.Fragment getUserViewDestination(@Nullable final BaseItemDto baseItem) {
+        CollectionType collectionType = baseItem == null ? CollectionType.UNKNOWN : baseItem.getCollectionType();
 
         switch (collectionType) {
-            case CollectionType.Movies:
-            case CollectionType.TvShows:
-                LibraryPreferences displayPreferences = KoinJavaComponent.<PreferencesRepository>get(PreferencesRepository.class).getLibraryPreferences(baseItem.getDisplayPreferencesId());
+            case MOVIES:
+            case TVSHOWS:
+                LibraryPreferences displayPreferences = preferencesRepository.getValue().getLibraryPreferences(baseItem.getDisplayPreferencesId());
                 boolean enableSmartScreen = displayPreferences.get(LibraryPreferences.Companion.getEnableSmartScreen());
 
                 if (!enableSmartScreen) return Destinations.INSTANCE.libraryBrowser(baseItem);
                 else return Destinations.INSTANCE.librarySmartScreen(baseItem);
-            case CollectionType.Music:
-            case CollectionType.LiveTv:
+            case MUSIC:
+            case LIVETV:
                 return Destinations.INSTANCE.librarySmartScreen(baseItem);
             default:
                 return Destinations.INSTANCE.libraryBrowser(baseItem);
         }
     }
 
-    public static void launch(final BaseRowItem rowItem, ItemRowAdapter adapter, int pos, final Context context) {
-        NavigationRepository navigationRepository = KoinJavaComponent.<NavigationRepository>get(NavigationRepository.class);
-
+    public void launch(final BaseRowItem rowItem, ItemRowAdapter adapter, int pos, final Context context) {
         switch (rowItem.getBaseRowType()) {
             case BaseItem:
                 BaseItemDto baseItem = rowItem.getBaseItem();
@@ -76,7 +77,6 @@ public class ItemLauncher {
                     //swallow it
                 }
 
-                MediaManager mediaManager = KoinJavaComponent.<MediaManager>get(MediaManager.class);
                 //specialized type handling
                 switch (baseItem.getType()) {
                     case USER_VIEW:
@@ -85,12 +85,12 @@ public class ItemLauncher {
                         return;
                     case SERIES:
                     case MUSIC_ARTIST:
-                        navigationRepository.navigate(Destinations.INSTANCE.itemDetails(baseItem.getId()));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.itemDetails(baseItem.getId()));
                         return;
 
                     case MUSIC_ALBUM:
                     case PLAYLIST:
-                        navigationRepository.navigate(Destinations.INSTANCE.itemList(baseItem.getId()));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.itemList(baseItem.getId()));
                         return;
 
                     case AUDIO:
@@ -98,18 +98,14 @@ public class ItemLauncher {
                         if (rowItem.getBaseItem() == null)
                             return;
 
-                        PlaybackLauncher playbackLauncher = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class);
-                        if (playbackLauncher.interceptPlayRequest(context, rowItem.getBaseItem()))
-                            return;
-
                         // if the song currently playing is selected (and is the exact item - this only happens in the nowPlayingRow), open AudioNowPlayingActivity
-                        if (mediaManager.hasAudioQueueItems() && rowItem instanceof AudioQueueItem && rowItem.getBaseItem().getId().equals(mediaManager.getCurrentAudioItem().getId())) {
-                            navigationRepository.navigate(Destinations.INSTANCE.getNowPlaying());
-                        } else if (mediaManager.hasAudioQueueItems() && rowItem instanceof AudioQueueItem && pos < mediaManager.getCurrentAudioQueueSize()) {
+                        if (mediaManager.getValue().hasAudioQueueItems() && rowItem instanceof AudioQueueItem && rowItem.getBaseItem().getId().equals(mediaManager.getValue().getCurrentAudioItem().getId())) {
+                            navigationRepository.getValue().navigate(Destinations.INSTANCE.getNowPlaying());
+                        } else if (mediaManager.getValue().hasAudioQueueItems() && rowItem instanceof AudioQueueItem && pos < mediaManager.getValue().getCurrentAudioQueueSize()) {
                             Timber.d("playing audio queue item");
-                            mediaManager.playFrom(pos);
+                            mediaManager.getValue().playFrom(pos);
                         } else if (adapter.getQueryType() == QueryType.Search) {
-                            mediaManager.playNow(context, Arrays.asList(rowItem.getBaseItem()), 0, false);
+                            mediaManager.getValue().playNow(context, Arrays.asList(rowItem.getBaseItem()), 0, false);
                         } else {
                             Timber.d("playing audio item");
                             List<BaseItemDto> audioItemsAsList = new ArrayList<>();
@@ -118,20 +114,20 @@ public class ItemLauncher {
                                 if (item instanceof BaseRowItem && ((BaseRowItem) item).getBaseItem() != null)
                                     audioItemsAsList.add(((BaseRowItem) item).getBaseItem());
                             }
-                            mediaManager.playNow(context, audioItemsAsList, pos, false);
+                            mediaManager.getValue().playNow(context, audioItemsAsList, pos, false);
                         }
 
                         return;
                     case SEASON:
-                        navigationRepository.navigate(Destinations.INSTANCE.folderBrowser(baseItem));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.folderBrowser(baseItem));
                         return;
 
                     case BOX_SET:
-                        navigationRepository.navigate(Destinations.INSTANCE.collectionBrowser(baseItem));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.collectionBrowser(baseItem));
                         return;
 
                     case PHOTO:
-                        navigationRepository.navigate(Destinations.INSTANCE.pictureViewer(
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.pictureViewer(
                                 baseItem.getId(),
                                 false,
                                 adapter.getSortBy(),
@@ -150,34 +146,30 @@ public class ItemLauncher {
                         baseItem = JavaCompat.copyWithDisplayPreferencesId(baseItem, baseItem.getId().toString());
                     }
 
-                    navigationRepository.navigate(Destinations.INSTANCE.libraryBrowser(baseItem));
+                    navigationRepository.getValue().navigate(Destinations.INSTANCE.libraryBrowser(baseItem));
                 } else {
                     switch (rowItem.getSelectAction()) {
 
                         case ShowDetails:
-                            navigationRepository.navigate(Destinations.INSTANCE.itemDetails(baseItem.getId()));
+                            navigationRepository.getValue().navigate(Destinations.INSTANCE.itemDetails(baseItem.getId()));
                             break;
                         case Play:
-                            if (baseItem.getPlayAccess() == org.jellyfin.sdk.model.api.PlayAccess.FULL) {
-                                //Just play it directly
-                                final BaseItemKind itemType = baseItem.getType();
-                                PlaybackHelper.getItemsToPlay(baseItem, baseItem.getType() == BaseItemKind.MOVIE, false, new Response<List<BaseItemDto>>() {
-                                    @Override
-                                    public void onResponse(List<BaseItemDto> response) {
-                                        KoinJavaComponent.<VideoQueueManager>get(VideoQueueManager.class).setCurrentVideoQueue(response);
-                                        Destination destination = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).getPlaybackDestination(itemType, 0);
-                                        navigationRepository.navigate(destination);
-                                    }
-                                });
-                            } else {
-                                Utils.showToast(context, "Item not playable at this time");
-                            }
+                            //Just play it directly
+                            final BaseItemKind itemType = baseItem.getType();
+                            PlaybackHelper.getItemsToPlay(baseItem, baseItem.getType() == BaseItemKind.MOVIE, false, new Response<List<BaseItemDto>>() {
+                                @Override
+                                public void onResponse(List<BaseItemDto> response) {
+                                    videoQueueManager.getValue().setCurrentVideoQueue(response);
+                                    Destination destination = playbackLauncher.getValue().getPlaybackDestination(itemType, 0);
+                                    navigationRepository.getValue().navigate(destination);
+                                }
+                            });
                             break;
                     }
                 }
                 break;
             case Person:
-                navigationRepository.navigate(Destinations.INSTANCE.itemDetails(rowItem.getBasePerson().getId()));
+                navigationRepository.getValue().navigate(Destinations.INSTANCE.itemDetails(rowItem.getBasePerson().getId()));
 
                 break;
             case Chapter:
@@ -188,10 +180,10 @@ public class ItemLauncher {
                     public void onResponse(BaseItemDto response) {
                         List<BaseItemDto> items = new ArrayList<>();
                         items.add(response);
-                        KoinJavaComponent.<VideoQueueManager>get(VideoQueueManager.class).setCurrentVideoQueue(items);
+                        videoQueueManager.getValue().setCurrentVideoQueue(items);
                         Long start = chapter.getStartPositionTicks() / 10000;
-                        Destination destination = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).getPlaybackDestination(response.getType(), start.intValue());
-                        navigationRepository.navigate(destination);
+                        Destination destination = playbackLauncher.getValue().getPlaybackDestination(response.getType(), start.intValue());
+                        navigationRepository.getValue().navigate(destination);
                     }
                 });
 
@@ -202,25 +194,21 @@ public class ItemLauncher {
                 switch (rowItem.getSelectAction()) {
 
                     case ShowDetails:
-                        navigationRepository.navigate(Destinations.INSTANCE.channelDetails(program.getId(), program.getChannelId(), program));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.channelDetails(program.getId(), program.getChannelId(), program));
                         break;
                     case Play:
-                        if (program.getPlayAccess() == org.jellyfin.sdk.model.api.PlayAccess.FULL) {
-                            //Just play it directly - need to retrieve program channel via items api to convert to BaseItem
-                            ItemLauncherHelper.getItem(program.getChannelId(), new Response<BaseItemDto>() {
-                                @Override
-                                public void onResponse(BaseItemDto response) {
-                                    List<BaseItemDto> items = new ArrayList<>();
-                                    items.add(response);
-                                    KoinJavaComponent.<VideoQueueManager>get(VideoQueueManager.class).setCurrentVideoQueue(items);
-                                    Destination destination = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).getPlaybackDestination(response.getType(), 0);
-                                    navigationRepository.navigate(destination);
+                        //Just play it directly - need to retrieve program channel via items api to convert to BaseItem
+                        ItemLauncherHelper.getItem(program.getChannelId(), new Response<BaseItemDto>() {
+                            @Override
+                            public void onResponse(BaseItemDto response) {
+                                List<BaseItemDto> items = new ArrayList<>();
+                                items.add(response);
+                                videoQueueManager.getValue().setCurrentVideoQueue(items);
+                                Destination destination = playbackLauncher.getValue().getPlaybackDestination(response.getType(), 0);
+                                navigationRepository.getValue().navigate(destination);
 
-                                }
-                            });
-                        } else {
-                            Utils.showToast(context, "Item not playable at this time");
-                        }
+                            }
+                        });
                 }
                 break;
 
@@ -233,9 +221,9 @@ public class ItemLauncher {
                         PlaybackHelper.getItemsToPlay(response, false, false, new Response<List<BaseItemDto>>() {
                             @Override
                             public void onResponse(List<BaseItemDto> response) {
-                                KoinJavaComponent.<VideoQueueManager>get(VideoQueueManager.class).setCurrentVideoQueue(response);
-                                Destination destination = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).getPlaybackDestination(channel.getType(), 0);
-                                navigationRepository.navigate(destination);
+                                videoQueueManager.getValue().setCurrentVideoQueue(response);
+                                Destination destination = playbackLauncher.getValue().getPlaybackDestination(channel.getType(), 0);
+                                navigationRepository.getValue().navigate(destination);
                             }
                         });
                     }
@@ -246,49 +234,45 @@ public class ItemLauncher {
                 switch (rowItem.getSelectAction()) {
 
                     case ShowDetails:
-                        navigationRepository.navigate(Destinations.INSTANCE.itemDetails(rowItem.getBaseItem().getId()));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.itemDetails(rowItem.getBaseItem().getId()));
                         break;
                     case Play:
-                        if (rowItem.getBaseItem().getPlayAccess() == PlayAccess.FULL) {
-                            //Just play it directly but need to retrieve as base item
-                            ItemLauncherHelper.getItem(rowItem.getBaseItem().getId(), new Response<BaseItemDto>() {
-                                @Override
-                                public void onResponse(BaseItemDto response) {
-                                    List<BaseItemDto> items = new ArrayList<>();
-                                    items.add(response);
-                                    KoinJavaComponent.<VideoQueueManager>get(VideoQueueManager.class).setCurrentVideoQueue(items);
-                                    Destination destination = KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).getPlaybackDestination(rowItem.getBaseItemType(), 0);
-                                    navigationRepository.navigate(destination);
-                                }
-                            });
-                        } else {
-                            Utils.showToast(context, "Item not playable at this time");
-                        }
+                        //Just play it directly but need to retrieve as base item
+                        ItemLauncherHelper.getItem(rowItem.getBaseItem().getId(), new Response<BaseItemDto>() {
+                            @Override
+                            public void onResponse(BaseItemDto response) {
+                                List<BaseItemDto> items = new ArrayList<>();
+                                items.add(response);
+                                videoQueueManager.getValue().setCurrentVideoQueue(items);
+                                Destination destination = playbackLauncher.getValue().getPlaybackDestination(rowItem.getBaseItemType(), 0);
+                                navigationRepository.getValue().navigate(destination);
+                            }
+                        });
                         break;
                 }
                 break;
 
             case SeriesTimer:
-                navigationRepository.navigate(Destinations.INSTANCE.seriesTimerDetails(UUIDSerializerKt.toUUID(rowItem.getItemId()), ModelCompat.asSdk(rowItem.getSeriesTimerInfo())));
+                navigationRepository.getValue().navigate(Destinations.INSTANCE.seriesTimerDetails(UUIDSerializerKt.toUUID(rowItem.getItemId()), ModelCompat.asSdk(rowItem.getSeriesTimerInfo())));
                 break;
 
 
             case GridButton:
                 switch (rowItem.getGridButton().getId()) {
                     case LiveTvOption.LIVE_TV_GUIDE_OPTION_ID:
-                        navigationRepository.navigate(Destinations.INSTANCE.getLiveTvGuide());
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.getLiveTvGuide());
                         break;
 
                     case LiveTvOption.LIVE_TV_RECORDINGS_OPTION_ID:
-                        navigationRepository.navigate(Destinations.INSTANCE.getLiveTvRecordings());
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.getLiveTvRecordings());
                         break;
 
                     case LiveTvOption.LIVE_TV_SERIES_OPTION_ID:
-                        navigationRepository.navigate(Destinations.INSTANCE.librarySmartScreen(FakeBaseItem.INSTANCE.getSERIES_TIMERS()));
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.getLiveTvSeriesRecordings());
                         break;
 
                     case LiveTvOption.LIVE_TV_SCHEDULE_OPTION_ID:
-                        navigationRepository.navigate(Destinations.INSTANCE.getLiveTvSchedule());
+                        navigationRepository.getValue().navigate(Destinations.INSTANCE.getLiveTvSchedule());
                         break;
                 }
                 break;

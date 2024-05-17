@@ -10,10 +10,11 @@ import org.jellyfin.playback.core.mediastream.PlayableMediaStream
 import org.jellyfin.playback.core.model.PlayState
 import org.jellyfin.playback.core.model.RepeatMode
 import org.jellyfin.playback.core.plugin.PlayerService
-import org.jellyfin.playback.jellyfin.queue.item.BaseItemDtoUserQueueEntry
+import org.jellyfin.playback.jellyfin.queue.baseItem
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.playStateApi
 import org.jellyfin.sdk.model.api.PlayMethod
+import org.jellyfin.sdk.model.api.PlaybackOrder
 import org.jellyfin.sdk.model.api.PlaybackProgressInfo
 import org.jellyfin.sdk.model.api.PlaybackStartInfo
 import org.jellyfin.sdk.model.api.PlaybackStopInfo
@@ -39,12 +40,6 @@ class PlaySessionService(
 			}
 		}.launchIn(coroutineScope)
 	}
-
-	private val PlayableMediaStream.baseItem
-		get() = when (val entry = queueEntry) {
-			is BaseItemDtoUserQueueEntry -> entry.baseItem
-			else -> null
-		}
 
 	private val MediaConversionMethod.playMethod
 		get() = when (this) {
@@ -94,12 +89,12 @@ class PlaySessionService(
 		// backend.
 		return state.queue
 			.peekNext(15)
-			.filterIsInstance<BaseItemDtoUserQueueEntry>()
-			.map { QueueItem(id = it.baseItem.id, playlistItemId = it.baseItem.playlistItemId) }
+			.mapNotNull { it.baseItem }
+			.map { QueueItem(id = it.id, playlistItemId = it.playlistItemId) }
 	}
 
 	private suspend fun sendStreamStart(stream: PlayableMediaStream) {
-		val item = stream.baseItem ?: return
+		val item = stream.queueEntry.baseItem ?: return
 		api.playStateApi.reportPlaybackStart(PlaybackStartInfo(
 			itemId = item.id,
 			playSessionId = stream.identifier,
@@ -113,11 +108,16 @@ class PlaySessionService(
 			playMethod = stream.conversionMethod.playMethod,
 			repeatMode = state.repeatMode.value.remoteRepeatMode,
 			nowPlayingQueue = getQueue(),
+			playbackOrder = when (state.playbackOrder.value) {
+				org.jellyfin.playback.core.model.PlaybackOrder.DEFAULT -> PlaybackOrder.DEFAULT
+				org.jellyfin.playback.core.model.PlaybackOrder.RANDOM -> PlaybackOrder.SHUFFLE
+				org.jellyfin.playback.core.model.PlaybackOrder.SHUFFLE -> PlaybackOrder.SHUFFLE
+			}
 		))
 	}
 
 	private suspend fun sendStreamUpdate(stream: PlayableMediaStream) {
-		val item = stream.baseItem ?: return
+		val item = stream.queueEntry.baseItem ?: return
 		api.playStateApi.reportPlaybackProgress(PlaybackProgressInfo(
 			itemId = item.id,
 			playSessionId = stream.identifier,
@@ -131,11 +131,16 @@ class PlaySessionService(
 			playMethod = stream.conversionMethod.playMethod,
 			repeatMode = state.repeatMode.value.remoteRepeatMode,
 			nowPlayingQueue = getQueue(),
+			playbackOrder = when (state.playbackOrder.value) {
+				org.jellyfin.playback.core.model.PlaybackOrder.DEFAULT -> PlaybackOrder.DEFAULT
+				org.jellyfin.playback.core.model.PlaybackOrder.RANDOM -> PlaybackOrder.SHUFFLE
+				org.jellyfin.playback.core.model.PlaybackOrder.SHUFFLE -> PlaybackOrder.SHUFFLE
+			}
 		))
 	}
 
 	private suspend fun sendStreamStop(stream: PlayableMediaStream) {
-		val item = stream.baseItem ?: return
+		val item = stream.queueEntry.baseItem ?: return
 		api.playStateApi.reportPlaybackStopped(PlaybackStopInfo(
 			itemId = item.id,
 			playSessionId = stream.identifier,
